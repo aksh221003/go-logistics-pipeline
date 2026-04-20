@@ -1,6 +1,5 @@
 import streamlit as st
-from crewai import Agent, Task, Crew, Process
-from langchain_groq import ChatGroq
+from crewai import Agent, Task, Crew, Process, LLM
 import os
 from dotenv import load_dotenv
 
@@ -17,23 +16,22 @@ groq_api_key = os.getenv("GROQ_API_KEY")
 if not groq_api_key:
     st.error("Opps! .env file mein GROQ_API_KEY nahi mili. Please check karein.")
 else:
-    # 1. LLM Setup (Latest compatible way)
-    llm = ChatGroq(
-        temperature=0.2,
-        model_name="llama-3.1-8b-instant",
-        groq_api_key=groq_api_key
+    # 1. NEW WAY: CrewAI's Native LLM Setup (No Langchain needed)
+    groq_llm = LLM(
+        model="groq/llama-3.1-8b-instant",
+        api_key=groq_api_key,
+        temperature=0.2
     )
 
-    # 2. Agent Definition (Explicit LLM handling)
+    # 2. Agent Definition
     researcher = Agent(
         role='Logistics Strategy Expert',
         goal='Provide accurate and detailed analysis for shipping, supply chain, and route optimization queries.',
         backstory='''You are a veteran logistics consultant with 20 years of experience. 
         You specialize in reducing costs and improving delivery timelines globally.''',
-        llm=llm,
+        llm=groq_llm, # <--- Direct CrewAI LLM
         verbose=True,
-        allow_delegation=False,
-        memory=True
+        allow_delegation=False
     )
 
     # UI Input
@@ -41,7 +39,7 @@ else:
 
     if st.button("Ask AI Team"):
         if user_query:
-            with st.spinner("Agents brainstorming kar rahe hain..."):
+            with st.spinner("Agents brainstorming kar rahe hain... (isme 10-15 seconds lag sakte hain)"):
                 try:
                     # 3. Task Definition
                     analysis_task = Task(
@@ -66,10 +64,10 @@ else:
                     st.markdown(result.raw)
 
                 except Exception as e:
-                    st.error(f"Ek error aaya hai: {str(e)}")
+                    st.error(f"Ek naya error aaya hai: {str(e)}")
         else:
             st.warning("Please kuch sawal toh likho!")
 
 # Footer
 st.sidebar.markdown("---")
-st.sidebar.write("Powered by CrewAI & Groq Llama 3.1")
+st.sidebar.write("Powered by CrewAI Native LLM & Groq")
