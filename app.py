@@ -1,46 +1,75 @@
 import streamlit as st
-from crewai import Agent, Task, Crew
+from crewai import Agent, Task, Crew, Process
 from langchain_groq import ChatGroq
 import os
 from dotenv import load_dotenv
 
-# Env variables load karne ke liye
+# Environment variables load karo
 load_dotenv()
 
+# Page Configuration
 st.set_page_config(page_title="Logistics AI Agent", layout="wide")
 st.title("🤖 Logistics Agentic AI Assistant")
 
+# API Key check
 groq_api_key = os.getenv("GROQ_API_KEY")
 
 if not groq_api_key:
-    st.error("Opps! .env file mein GROQ_API_KEY nahi mili.")
+    st.error("Opps! .env file mein GROQ_API_KEY nahi mili. Please check karein.")
 else:
-    # Model Setup
+    # 1. LLM Setup (Latest compatible way)
     llm = ChatGroq(
-        temperature=0.3, 
-        model_name="llama-3.1-8b-instant", 
+        temperature=0.2,
+        model_name="llama-3.1-8b-instant",
         groq_api_key=groq_api_key
     )
 
-    # Agent Definition
+    # 2. Agent Definition (Explicit LLM handling)
     researcher = Agent(
-        role='Logistics Researcher',
-        goal='Provide expert analysis on shipping and supply chain queries',
-        backstory='You are a veteran logistics consultant with 20 years of experience.',
+        role='Logistics Strategy Expert',
+        goal='Provide accurate and detailed analysis for shipping, supply chain, and route optimization queries.',
+        backstory='''You are a veteran logistics consultant with 20 years of experience. 
+        You specialize in reducing costs and improving delivery timelines globally.''',
         llm=llm,
-        verbose=True
+        verbose=True,
+        allow_delegation=False,
+        memory=True
     )
 
-    query = st.text_input("Apna logistics sawal yahan likhein:", "Best shipping route from India to USA?")
+    # UI Input
+    user_query = st.text_input("Apna logistics sawal yahan likhein:", "Best shipping route from India to USA?")
 
     if st.button("Ask AI Team"):
-        with st.spinner("Agents kaam kar rahe hain..."):
-            task = Task(
-                description=query,
-                agent=researcher,
-                expected_output="A detailed bullet-point report."
-            )
-            crew = Crew(agents=[researcher], tasks=[task])
-            result = crew.kickoff()
-            st.subheader("Results:")
-            st.write(result.raw)
+        if user_query:
+            with st.spinner("Agents brainstorming kar rahe hain..."):
+                try:
+                    # 3. Task Definition
+                    analysis_task = Task(
+                        description=f"Analyze the following query and provide a professional recommendation: {user_query}",
+                        agent=researcher,
+                        expected_output="A comprehensive report with bullet points, covering costs, routes, and estimated time."
+                    )
+
+                    # 4. Crew Formation
+                    logistics_crew = Crew(
+                        agents=[researcher],
+                        tasks=[analysis_task],
+                        process=Process.sequential
+                    )
+
+                    # Execution
+                    result = logistics_crew.kickoff()
+
+                    # Result Display
+                    st.success("Analysis Complete!")
+                    st.subheader("Results:")
+                    st.markdown(result.raw)
+
+                except Exception as e:
+                    st.error(f"Ek error aaya hai: {str(e)}")
+        else:
+            st.warning("Please kuch sawal toh likho!")
+
+# Footer
+st.sidebar.markdown("---")
+st.sidebar.write("Powered by CrewAI & Groq Llama 3.1")
